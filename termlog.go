@@ -35,6 +35,17 @@ func (c *ConsoleLogWriter) run(out io.Writer) {
 	}
 }
 
+func NewStderrLogWriter() *ConsoleLogWriter {
+	var stderr io.Writer
+	consoleWriter := &ConsoleLogWriter{
+		format: "[%T %D] [%L] (%S) %M",
+		w:      make(chan *LogRecord, LogBufferLength),
+	}
+	stderr = os.Stderr
+	go consoleWriter.run(stderr)
+	return consoleWriter
+}
+
 // This is the ConsoleLogWriter's output method.  This will block if the output
 // buffer is full.
 func (c *ConsoleLogWriter) LogWrite(rec *LogRecord) {
