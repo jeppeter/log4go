@@ -14,13 +14,13 @@
 //
 // log := log4go.NewLogger()
 // log.AddFilter("stdout", log4go.DEBUG, log4go.NewConsoleLogWriter())
-// log.AddFilter("log",    log4go.FINE,  log4go.NewFileLogWriter("example.log", true))
+// log.AddFilter("log",    log4go.FINE,  log4go.NewFileLogWriter("example.log", true, false))
 // log.Info("The time is now: %s", time.LocalTime().Format("15:04:05 MST 2006/01/02"))
 //
 // The first two lines can be combined with the utility NewDefaultLogger:
 //
 // log := log4go.NewDefaultLogger(log4go.DEBUG)
-// log.AddFilter("log",    log4go.FINE,  log4go.NewFileLogWriter("example.log", true))
+// log.AddFilter("log",    log4go.FINE,  log4go.NewFileLogWriter("example.log", true, false))
 // log.Info("The time is now: %s", time.LocalTime().Format("15:04:05 MST 2006/01/02"))
 //
 // Usage notes:

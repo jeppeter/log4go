@@ -57,9 +57,11 @@ func (w *FileLogWriter) Close() {
 // with a .### extension to preserve it.  The various Set* methods can be used
 // to configure log rotation based on lines, size, and daily.
 //
+// If truncated is set false ,it will give the
+//
 // The standard log-line format is:
 //   [%D %T] [%L] (%S) %M
-func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
+func NewFileLogWriter(fname string, rotate bool, truncated bool) *FileLogWriter {
 	w := &FileLogWriter{
 		rec:       make(chan *LogRecord, LogBufferLength),
 		rot:       make(chan bool),
@@ -70,7 +72,7 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 	}
 
 	// open the file for the first time
-	if err := w.intRotate(); err != nil {
+	if err := w.intRotate(truncated); err != nil {
 		fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 		return nil
 	}
@@ -86,7 +88,7 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 		for {
 			select {
 			case <-w.rot:
-				if err := w.intRotate(); err != nil {
+				if err := w.intRotate(truncated); err != nil {
 					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 					return
 				}
@@ -98,7 +100,7 @@ func NewFileLogWriter(fname string, rotate bool) *FileLogWriter {
 				if (w.maxlines > 0 && w.maxlines_curlines >= w.maxlines) ||
 					(w.maxsize > 0 && w.maxsize_cursize >= w.maxsize) ||
 					(w.daily && now.Day() != w.daily_opendate) {
-					if err := w.intRotate(); err != nil {
+					if err := w.intRotate(truncated); err != nil {
 						fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.filename, err)
 						return
 					}
@@ -127,7 +129,7 @@ func (w *FileLogWriter) Rotate() {
 }
 
 // If this is called in a threaded context, it MUST be synchronized
-func (w *FileLogWriter) intRotate() error {
+func (w *FileLogWriter) intRotate(truncated bool) error {
 	// Close any log file that may be open
 	if w.file != nil {
 		fmt.Fprint(w.file, FormatLogRecord(w.trailer, &LogRecord{Created: time.Now()}))
@@ -174,7 +176,13 @@ func (w *FileLogWriter) intRotate() error {
 	}
 
 	// Open the log file
-	fd, err := os.OpenFile(w.filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	flag := os.O_WRONLY | os.O_CREATE
+	if !truncated {
+		flag = flag | os.O_APPEND
+	} else {
+		flag = flag | os.O_TRUNC
+	}
+	fd, err := os.OpenFile(w.filename, flag, 0660)
 	if err != nil {
 		return err
 	}
@@ -255,7 +263,7 @@ func (w *FileLogWriter) SetRotate(rotate bool) *FileLogWriter {
 // NewXMLLogWriter is a utility method for creating a FileLogWriter set up to
 // output XML record log messages instead of line-based ones.
 func NewXMLLogWriter(fname string, rotate bool) *FileLogWriter {
-	return NewFileLogWriter(fname, rotate).SetFormat(
+	return NewFileLogWriter(fname, rotate, false).SetFormat(
 		`	<record level="%L">
 		<timestamp>%D %T</timestamp>
 		<source>%S</source>
